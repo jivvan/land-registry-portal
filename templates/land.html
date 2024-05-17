@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Online Land Registry</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <link
+      href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <script src="/static/language.js"></script>
+    <script src="/static/script.js"></script>
+    <style>
+      #map {
+        height: 400px;
+        width: 100%;
+        margin-bottom: 20px;
+        position: relative;
+      }
+      .banner {
+        background-color: white;
+        font-size: large;
+        padding: 2rem;
+      }
+      .banner-content {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      @media (min-width: 768px) {
+        .banner-content {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .history-left {
+          width: 30%;
+          text-align: left;
+        }
+
+        .history-right {
+          width: 30%;
+          text-align: right;
+        }
+
+        .history-center {
+          text-align: center;
+          width: 40%;
+        }
+      }
+      .history {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        font-size: large;
+      }
+      .history-item {
+        background-color: white;
+        padding: 1rem;
+        border: 1px solid #ccc;
+        /* border-radius: 0.5rem; */
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        /* flex-direction: column; */
+        flex-wrap: wrap;
+      }
+      .history-left {
+        text-align: left;
+      }
+      .history-right {
+        text-align: right;
+      }
+      .history-center {
+        text-align: center;
+      }
+      .centerize {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .centerize strong {
+        color: #004471;
+        font-size: xx-large;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <a href="/">
+        <img
+          class="flag"
+          src="https://www.nepal.gov.np/splash/images/WavingFlag.gif"
+          alt="Nepal Flag"
+        />
+      </a>
+      <button id="languageBtn" onclick="changeLanguage()">नेपाली</button>
+    </div>
+    <div class="container">
+      <div class="banner" id="plotBanner">
+        <h2 style="text-align: center">{{ land_details.details.landName }}</h2>
+        <div class="banner-content">
+          <p><strong>Area:</strong> {{ land_details.details.landArea }}</p>
+          <p>
+            <strong>Location:</strong> {{ land_details.details.napaGapa }}, {{
+            land_details.details.wardNo }}
+          </p>
+          <p><strong>Owner:</strong> {{ land_details.details.landOwner }}</p>
+          <p>
+            <strong>Owner Identification:</strong> {{
+            land_details.details.ownerId }}
+          </p>
+          <p><strong>Land Type:</strong> {{ land_details.details.landType }}</p>
+        </div>
+      </div>
+      <div id="map"></div>
+
+      <br />
+      <!-- History -->
+      <div class="history">
+        {% if land_details.transactions.data | length %}
+        <h2>Land History</h2>
+        {% endif %} {% for transaction in land_details.transactions.data %}
+        <div class="history-item">
+          <span class="history-left">
+            <h3>Seller</h3>
+            <p><strong>Name:</strong> {{ transaction.sellerName }}</p>
+            <p><strong>ID:</strong> {{ transaction.sellerId }}</p>
+          </span>
+          <span class="history-center">
+            <p class="centerize">
+              <strong><i class="fa-solid fa-calendar"></i></strong
+              >&nbsp;&nbsp;&nbsp; {{ transaction.transactionDate }}
+            </p>
+            <p class="centerize">
+              <strong><i class="fa-solid fa-money-bill"></i></strong>
+              &nbsp;&nbsp;&nbsp;NPR {{ transaction.transactionAmount }}
+            </p>
+            <p style="font-size: small">{{ transaction.additionalDetails }}</p>
+          </span>
+          <span class="history-right">
+            <h3>Buyer</h3>
+            <p><strong>Name:</strong> {{ transaction.buyerName }}</p>
+            <p><strong>ID:</strong> {{ transaction.buyerId }}</p>
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="footer">
+      <p>&copy; 2024 Online Land Registry. All rights reserved.</p>
+    </div>
+
+    <script>
+      var geojson = JSON.parse({{ land_details.details.polygonData | tojson }})
+
+      var bounds = new maplibregl.LngLatBounds();
+      geojson.features.forEach(feature => {
+            feature.geometry.coordinates[0].forEach(coord => {
+              bounds.extend(coord);
+            });
+          });
+      var map = new maplibregl.Map({
+        container: "map",
+        style: baseLayerStyle,
+        minZoom: 7,
+        zoom: 10,
+        center: bounds.getCenter(),
+        maxZoom: 19,
+      });
+      map.on("load", () => {
+        map.fitBounds(bounds, {
+          padding: 20
+        });
+        map.addSource("geojson", {
+          type: "geojson",
+          data: geojson,
+        });
+
+        map.addLayer({
+          id: "land",
+          type: "fill",
+          source: "geojson",
+          layout: {},
+          paint: {
+            "fill-color": "#005a8d",
+            "fill-opacity": 0.8,
+          },
+        });
+      });
+
+      function getZoomLevel(bounds) {
+          var WORLD_DIM = { height: 256, width: 256 };
+          var ZOOM_MAX = 24;
+
+          function latRad(lat) {
+              var sin = Math.sin(lat * Math.PI / 180);
+              var radX2 = Math.log((1 + sin) / (1 - sin)) / 2;
+              return Math.max(Math.min(radX2, Math.PI), -Math.PI) / 2;
+          }
+
+          function zoom(mapPx, worldPx, fraction) {
+              return Math.floor(Math.log(mapPx / worldPx / fraction) / Math.LN2);
+          }
+
+          var ne = bounds.getNorthEast();
+          var sw = bounds.getSouthWest();
+
+          var latFraction = (latRad(ne.lat) - latRad(sw.lat)) / Math.PI;
+
+          var lngDiff = ne.lng - sw.lng;
+          var lngFraction = ((lngDiff < 0) ? (lngDiff + 360) : lngDiff) / 360;
+
+          var latZoom = zoom(100, WORLD_DIM.height, latFraction);
+          var lngZoom = zoom(100, WORLD_DIM.width, lngFraction);
+
+          return Math.min(latZoom, lngZoom, ZOOM_MAX);
+      }
+    </script>
+  </body>
+</html>

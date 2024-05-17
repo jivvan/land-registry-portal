@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Land Record</title>
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <link
+      href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/form.css" />
+    <script src="/static/language.js"></script>
+    <script src="/static/script.js"></script>
+  </head>
+  <body>
+    <div class="header">
+      <a href="/">
+        <img
+          class="flag"
+          src="https://www.nepal.gov.np/splash/images/WavingFlag.gif"
+          alt="Nepal Flag"
+        />
+      </a>
+      <button id="languageBtn" onclick="changeLanguage()">नेपाली</button>
+    </div>
+    <div class="container">
+      <h1>Create Land Record</h1>
+      <div id="map"></div>
+      <div id="calculated-area"></div>
+      <form
+        action="/submit_record"
+        method="post"
+        onsubmit="event.preventDefault(); prepareData();"
+      >
+        <label for="landName">Land Name:</label>
+        <input type="text" id="landName" name="landName" required />
+        <label for="landArea">Land Area:</label>
+        <input type="text" id="landArea" name="landArea" required />
+        <label for="napaGapa">Nagarpalika/Gaunpalika:</label>
+        <input type="text" id="napaGapa" name="napaGapa" required />
+        <label for="wardNo">Ward Number:</label>
+        <input type="text" id="wardNo" name="wardNo" required />
+        <label for="landOwner">Land Owner:</label>
+        <input type="text" id="landOwner" name="landOwner" required />
+        <label for="landOwner">Owner Identification:</label>
+        <input type="text" id="ownerId" name="ownerId" required />
+        <label for="landType">Land Type:</label>
+        <input type="text" id="landType" name="landType" required />
+        <input type="hidden" id="polygonData" name="polygonData" />
+        <input type="submit" value="Submit" />
+      </form>
+    </div>
+    <div class="footer">
+      <p>&copy; 2024 Online Land Registry. All rights reserved.</p>
+    </div>
+
+    <!-- For drawing capabilties -->
+    <script src="https://www.unpkg.com/turf@3.0.14/turf.min.js"></script>
+    <script src="https://www.unpkg.com/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://www.unpkg.com/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.css"
+      type="text/css"
+    />
+    <script>
+      MapboxDraw.constants.classes.CONTROL_BASE = "maplibregl-ctrl";
+      MapboxDraw.constants.classes.CONTROL_PREFIX = "maplibregl-ctrl-";
+      MapboxDraw.constants.classes.CONTROL_GROUP = "maplibregl-ctrl-group";
+
+      var map = new maplibregl.Map({
+        container: "map",
+        style: baseLayerStyle,
+        center: [83.08547969047783, 27.964543378474218],
+        zoom: 16,
+      });
+
+      var draw = new MapboxDraw({
+        displayControlsDefault: false,
+        controls: {
+          polygon: true,
+          trash: true,
+        },
+      });
+      map.addControl(draw);
+
+      map.on("draw.create", updateArea);
+      map.on("draw.update", updateArea);
+      map.on("draw.delete", updateArea);
+
+      map.on("load", () => {
+        map.addSource("whole_geojson", {
+          type: "geojson",
+          data: "http://localhost:5000/whole_geojson",
+        });
+
+        map.addLayer({
+          id: "whole_map",
+          type: "fill",
+          source: "whole_geojson",
+          layout: {},
+          paint: {
+            "fill-color": "#005a8d",
+            "fill-opacity": 0.8,
+          },
+        });
+      });
+
+      //   map.on("click", "whole_map", (e) => {
+      //     if (e.features.length > 0) {
+      //       const feature = e.features[0];
+      //       const properties = feature.properties;
+      //       const popupObj = {
+      //         Name: properties.landName,
+      //         Area: properties.landArea,
+      //         Owner: properties.landOwner,
+      //         Location: properties.napaGapa + ", " + properties.wardNo,
+      //       };
+
+      //       let popupContent = "";
+      //       for (const [key, value] of Object.entries(popupObj)) {
+      //         if (key != "id") {
+      //           popupContent += `<b>${key}:</b> ${value}<br>`;
+      //         }
+      //       }
+
+      //       const popup = new maplibregl.Popup(); // Optional: prevent automatic closing
+      //       popup.setHTML(popupContent);
+
+      //       popup.setLngLat(e.lngLat);
+      //       popup.addTo(map);
+      //     }
+      //   });
+
+      function updateArea(e) {
+        const data = draw.getAll();
+        const answer = document.getElementById("calculated-area");
+        if (data.features.length > 0) {
+          const area = turf.area(data);
+          // restrict to area to 2 decimal points
+          const roundedArea = Math.round(area * 100) / 100;
+          answer.innerHTML = `Estimated area = <strong>${roundedArea}</strong> square meters <br/><br/>`;
+        } else {
+          answer.innerHTML = "";
+          if (e.type !== "draw.delete")
+            alert("Use the draw tools to draw a polygon!");
+        }
+      }
+
+      // Function to prepare data including the drawn polygon
+      function prepareData() {
+        const polygonData = draw.getAll();
+
+        if (polygonData.features.length === 0) {
+          alert("Select polygon");
+          return;
+        }
+
+        document.getElementById("polygonData").value =
+          JSON.stringify(polygonData);
+
+        document.getElementsByTagName("form")[0].submit();
+
+        return true;
+      }
+    </script>
+  </body>
+</html>

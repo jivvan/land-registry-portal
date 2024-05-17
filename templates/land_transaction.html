@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Online Land Registry</title>
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <link
+      href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/form.css" />
+    <script src="/static/language.js"></script>
+    <script src="/static/script.js"></script>
+    <style>
+      .banner {
+        display: none;
+        background-color: #f8f9fa;
+        padding: 10px;
+        border: 1px solid #004471;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+
+      .search-container {
+        margin-bottom: 20px;
+      }
+
+      .search-container input {
+        width: 80%;
+        padding: 10px;
+        margin-right: 5px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+      }
+
+      .search-container button {
+        padding: 10px 15px;
+        background-color: #005a8d;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      .search-container button:hover {
+        background-color: #004471;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="header">
+      <a href="/">
+        <img
+          class="flag"
+          src="https://www.nepal.gov.np/splash/images/WavingFlag.gif"
+          alt="Nepal Flag"
+        />
+      </a>
+      <button id="languageBtn" onclick="changeLanguage()">नेपाली</button>
+    </div>
+    <div class="container">
+      <h1>Land Transfer</h1>
+      <div class="search-container">
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Search for a plot by name..."
+        />
+        <button onclick="searchPlot()">Search</button>
+      </div>
+      <div id="map"></div>
+
+      <div class="banner" id="plotBanner">
+        <h3 id="bannerTitle"></h3>
+        <p id="bannerOwner"></p>
+        <p id="bannerArea"></p>
+        <p id="bannerType"></p>
+        <p id="bannerLocation"></p>
+      </div>
+
+      <!-- form section -->
+      <div class="form-container">
+        <form action="/create_transaction" method="POST">
+          <input required type="text" id="landId" name="landId" hidden />
+          <label for="buyerName">Buyer Name</label>
+          <input type="text" id="buyerName" name="buyerName" required />
+          <label for="buyerContact">Buyer Identification</label>
+          <input type="text" id="buyerId" name="buyerId" required />
+          <label for="transactionDate">Transaction Date</label>
+          <input
+            type="date"
+            id="transactionDate"
+            name="transactionDate"
+            required
+          />
+          <label for="transactionAmount">Transaction Amount</label>
+          <input
+            type="number"
+            id="transactionAmount"
+            name="transactionAmount"
+            required
+          />
+          <label for="additionalDetails">Additional Details</label>
+          <textarea
+            id="additionalDetails"
+            name="additionalDetails"
+            rows="4"
+          ></textarea>
+          <input type="submit" value="Submit" />
+        </form>
+      </div>
+    </div>
+
+    <!-- footer section -->
+    <div class="footer">
+      <p>&copy; 2024 Online Land Registry. All rights reserved.</p>
+    </div>
+    <script>
+      var map = new maplibregl.Map({
+        container: "map",
+        style: baseLayerStyle,
+        center: [83.08547969047783, 27.964543378474218],
+        zoom: 16,
+      });
+
+      map.on("load", () => {
+        map.addSource("whole_geojson", {
+          type: "geojson",
+          data: "http://localhost:5000/whole_geojson",
+        });
+
+        map.addLayer({
+          id: "whole_map",
+          type: "fill",
+          source: "whole_geojson",
+          layout: {},
+          paint: {
+            "fill-color": "#005a8d",
+            "fill-opacity": 0.8,
+          },
+        });
+
+        map.addSource("highlight", {
+          type: "geojson",
+          data: {
+            type: "FeatureCollection",
+            features: [],
+          },
+        });
+
+        map.addLayer({
+          id: "highlight-layer",
+          type: "fill",
+          source: "highlight",
+          paint: {
+            "fill-color": "#001b2d",
+          },
+        });
+        map.addLayer({
+          id: "highlight-line",
+          type: "line",
+          source: "highlight",
+          paint: {
+            "line-color": "#004471",
+            "line-width": 4,
+          },
+        });
+      });
+
+      map.on("click", "whole_map", (e) => {
+        if (e.features.length > 0) {
+          const feature = e.features[0];
+          const properties = feature.properties;
+
+          map.getSource("highlight").setData({
+            type: "FeatureCollection",
+            features: [feature],
+          });
+          setBannerDetails(properties);
+        }
+      });
+
+      function setBannerDetails(properties) {
+        document.getElementById("landId").value = properties.id;
+        document.getElementById("bannerTitle").innerText = properties.landName;
+        document.getElementById("bannerOwner").innerText =
+          "Owner: " + properties.landOwner;
+        document.getElementById("bannerArea").innerText =
+          "Area: " + properties.landArea;
+        document.getElementById("bannerType").innerText =
+          "Type: " + properties.landType;
+        document.getElementById("bannerLocation").innerText =
+          "Location: " + properties.napaGapa + ", " + properties.wardNo;
+
+        document.getElementById("plotBanner").style.display = "block";
+      }
+
+      function searchPlot() {
+        const searchInput = document
+          .getElementById("searchInput")
+          .value.toLowerCase();
+        fetch("http://localhost:5000/whole_geojson")
+          .then((response) => response.json())
+          .then((data) => {
+            const foundPlot = data.features.find((plot) =>
+              plot.properties.landName.toLowerCase().includes(searchInput)
+            );
+
+            if (foundPlot) {
+              const coordinates = foundPlot.geometry.coordinates[0][0];
+              map.flyTo({ center: coordinates, zoom: 18 });
+
+              map.getSource("highlight").setData({
+                type: "FeatureCollection",
+                features: [foundPlot],
+              });
+
+              setBannerDetails(foundPlot.properties);
+            } else {
+              alert("Plot not found.");
+            }
+          });
+      }
+    </script>
+  </body>
+</html>

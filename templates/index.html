@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Online Land Registry</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/language.js"></script>
+    <style>
+      .footer {
+        position: absolute;
+      }
+      .container {
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <a href="/">
+        <img
+          class="flag"
+          src="https://www.nepal.gov.np/splash/images/WavingFlag.gif"
+          alt="Nepal Flag"
+        />
+      </a>
+      <button id="languageBtn" onclick="changeLanguage()">नेपाली</button>
+    </div>
+    <div class="container">
+      <h2>Welcome to the Online Land Registry Portal</h2>
+      <p style="font-size: 1.2rem">
+        Transparent Land Records: Build Trust, Build Nepal
+      </p>
+      <a href="/create_record" class="btn">Create New Land Record</a>
+      <a href="/land_transaction" class="btn">Make Land Transaction</a>
+      <a href="/view_land_records" class="btn">View Land Records</a>
+      <p>For any inquiries or assistance, please contact us at:</p>
+      <p>Email: info@landregistry.gov.np</p>
+      <p>Phone: +977-1-2345678</p>
+    </div>
+    <div class="footer">
+      <p>&copy; 2024 Online Land Registry. All rights reserved.</p>
+    </div>
+  </body>
+</html>
